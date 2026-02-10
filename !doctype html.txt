@@ -1,0 +1,379 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Error Intervals MCQ (GCSE Foundation)</title>
+  <style>
+    :root { --pad: 16px; --radius: 14px; }
+    body { font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; margin: 0; background:#f6f7fb; color:#111; }
+    .wrap { max-width: 860px; margin: 0 auto; padding: 18px; }
+    .card {
+      background: #fff; border-radius: var(--radius);
+      padding: var(--pad); box-shadow: 0 8px 26px rgba(0,0,0,.08);
+      margin-bottom: 14px;
+    }
+    h1 { font-size: 1.25rem; margin: 0 0 8px; }
+    .rule { font-size: .98rem; line-height: 1.45; margin: 8px 0 0; }
+    .pill { display:inline-block; padding: 6px 10px; border-radius: 999px; background:#eef2ff; margin: 6px 6px 0 0; font-size: .92rem; }
+    .qtitle { font-size: 1.1rem; margin: 0 0 8px; }
+    .sub { color:#444; margin: 0 0 12px; line-height: 1.45; }
+    .grid { display:grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+    @media (max-width: 640px){ .grid { grid-template-columns: 1fr; } }
+    button.choice {
+      width: 100%;
+      padding: 12px 12px;
+      border-radius: 12px;
+      border: 1px solid #d8dbe6;
+      background: #fafbff;
+      cursor: pointer;
+      text-align: left;
+      font-size: 1rem;
+      transition: transform .04s ease, background .12s ease, border-color .12s ease;
+    }
+    button.choice:hover { background:#f2f5ff; border-color:#c6cbdd; }
+    button.choice:active { transform: scale(.99); }
+    .row { display:flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+    .row > * { flex: 0 0 auto; }
+    .btn {
+      padding: 10px 12px;
+      border-radius: 12px;
+      border: 1px solid #d8dbe6;
+      background: #fff;
+      cursor: pointer;
+      font-size: .96rem;
+    }
+    .btn:hover { background:#f7f8ff; }
+    .select {
+      padding: 9px 10px;
+      border-radius: 12px;
+      border: 1px solid #d8dbe6;
+      background: #fff;
+      font-size: .96rem;
+    }
+    .status { font-weight: 600; }
+    .ok { color: #0a7a2f; }
+    .no { color: #b00020; }
+    .explain {
+      background: #f8f9ff;
+      border: 1px solid #e2e6ff;
+      border-radius: 12px;
+      padding: 12px;
+      margin-top: 12px;
+      line-height: 1.45;
+    }
+    .muted { color:#555; }
+    .kbd { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; background:#f1f2f6; padding:2px 6px; border-radius: 8px; }
+    .footer { font-size: .9rem; color:#555; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Error Intervals – Multiple Choice (click buttons, no typing)</h1>
+      <div class="rule">
+        Rule (nearest <span class="kbd">unit</span>): the true value is
+        <span class="pill">lower = rounded − unit/2 (included)</span>
+        <span class="pill">upper = rounded + unit/2 (excluded)</span>
+        <div class="muted" style="margin-top:8px;">
+          So the interval is: <span class="kbd">lower ≤ x &lt; upper</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="row" style="justify-content: space-between;">
+        <div>
+          <div class="pill">Score: <span id="score">0</span></div>
+          <div class="pill">Question: <span id="qnum">1</span>/<span id="qtot">5</span></div>
+        </div>
+        <div class="row">
+          <label class="muted" for="difficulty">Difficulty:</label>
+          <select class="select" id="difficulty">
+            <option value="foundation" selected>Foundation</option>
+            <option value="mixed">Mixed</option>
+          </select>
+          <button class="btn" id="newSetBtn">New set</button>
+        </div>
+      </div>
+
+      <p class="qtitle" id="questionTitle">Loading…</p>
+      <p class="sub" id="questionSub"></p>
+
+      <div class="grid" id="choices"></div>
+
+      <div id="result" class="explain" style="display:none;"></div>
+
+      <div class="row" style="margin-top: 12px; justify-content: space-between;">
+        <button class="btn" id="nextBtn" disabled>Next question</button>
+        <div class="footer">
+          Teacher tip: hammer <span class="kbd">“top end excluded”</span>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+<script>
+(() => {
+  // ---------- Utilities ----------
+  const fmt = (n) => {
+    // integers with commas; decimals as-is
+    if (Math.abs(n - Math.round(n)) < 1e-9) return Math.round(n).toLocaleString("en-GB");
+    return n.toLocaleString("en-GB");
+  };
+
+  const interval = (rounded, unit) => {
+    const lo = rounded - unit/2;
+    const hi = rounded + unit/2;
+    return { lo, hi }; // [lo, hi)
+  };
+
+  const inInterval = (x, lo, hi) => (x >= lo && x < hi);
+
+  const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+
+  function sample(arr, k) {
+    const copy = [...arr];
+    const out = [];
+    for (let i = 0; i < k; i++) {
+      const j = Math.floor(Math.random() * copy.length);
+      out.push(copy.splice(j, 1)[0]);
+    }
+    return out;
+  }
+
+  function shuffle(arr) {
+    for (let i = arr.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [arr[i], arr[j]] = [arr[j], arr[i]];
+    }
+    return arr;
+  }
+
+  // ---------- Question generation ----------
+  function makeQuestion({ rounded, unit, context }) {
+    const { lo, hi } = interval(rounded, unit);
+
+    // We will force EXACTLY ONE correct option to keep "click one button" UX.
+    // Build options: one inside; three outside (including a boundary trap).
+    const options = new Set();
+
+    // correct inside: choose an integer inside (avoid edge ambiguity)
+    const insideMin = Math.ceil(lo);
+    const insideMax = Math.floor(hi - 1e-9); // hi excluded
+    let correct;
+    if (insideMin <= insideMax) {
+      correct = randInt(insideMin, insideMax);
+    } else {
+      // fallback (shouldn't happen for unit>=1 with integer rounded)
+      correct = lo;
+    }
+    options.add(correct);
+
+    // wrong 1: upper boundary (always wrong)
+    options.add(hi);
+
+    // wrong 2: just below lower boundary (wrong)
+    options.add(Math.ceil(lo) - 1);
+
+    // wrong 3: just above upper boundary (wrong)
+    options.add(Math.floor(hi) + 1);
+
+    // If any duplicates (small units), add extra wrongs until 4 total
+    while (options.size < 4) {
+      const pick = (Math.random() < 0.5)
+        ? randInt(Math.floor(lo - 2*unit), Math.floor(lo - 1))
+        : randInt(Math.ceil(hi + 1), Math.ceil(hi + 2*unit));
+      options.add(pick);
+    }
+
+    const opts = shuffle([...options]).slice(0, 4);
+    const correctIndex = opts.findIndex(x => x === correct);
+
+    return {
+      rounded, unit, context,
+      lo, hi,
+      opts,
+      correctIndex
+    };
+  }
+
+  function buildSet(difficulty) {
+    const out = [];
+
+    // Start with your example
+    out.push(makeQuestion({
+      rounded: 48000,
+      unit: 1000,
+      context: "population of a town"
+    }));
+
+    const foundationUnits = [10, 100, 1000]; // keep it Foundation-friendly
+    const mixedUnits = [1, 10, 100, 1000, 0.1, 0.01];
+
+    const contexts = [
+      "population of a town",
+      "distance (m)",
+      "time (s)",
+      "mass of a parcel (g)",
+      "length of a plank (cm)"
+    ];
+
+    for (let i = 0; i < 4; i++) {
+      const unit = (difficulty === "foundation")
+        ? foundationUnits[randInt(0, foundationUnits.length - 1)]
+        : mixedUnits[randInt(0, mixedUnits.length - 1)];
+
+      let rounded;
+      if (unit >= 1) {
+        // pick a tidy rounded value
+        rounded = randInt(20, 950) * unit;
+      } else {
+        // decimals (mixed only)
+        const mult = unit === 0.1 ? 1 : 1;
+        rounded = Math.round((randInt(100, 990) * unit) / mult) * mult;
+        rounded = Number(rounded.toFixed(unit === 0.1 ? 1 : 2));
+      }
+
+      const context = contexts[randInt(0, contexts.length - 1)];
+      out.push(makeQuestion({ rounded, unit, context }));
+    }
+
+    return out;
+  }
+
+  // ---------- State ----------
+  let questions = [];
+  let idx = 0;
+  let score = 0;
+  let locked = false;
+
+  // ---------- DOM ----------
+  const $score = document.getElementById("score");
+  const $qnum = document.getElementById("qnum");
+  const $qtot = document.getElementById("qtot");
+  const $title = document.getElementById("questionTitle");
+  const $sub = document.getElementById("questionSub");
+  const $choices = document.getElementById("choices");
+  const $result = document.getElementById("result");
+  const $next = document.getElementById("nextBtn");
+  const $newSet = document.getElementById("newSetBtn");
+  const $difficulty = document.getElementById("difficulty");
+
+  function render() {
+    locked = false;
+    $next.disabled = true;
+    $result.style.display = "none";
+    $result.innerHTML = "";
+
+    const q = questions[idx];
+    $score.textContent = score;
+    $qnum.textContent = String(idx + 1);
+    $qtot.textContent = String(questions.length);
+
+    $title.textContent = `Q${idx + 1}. The ${q.context} is ${fmt(q.rounded)}, to the nearest ${fmt(q.unit)}.`;
+    $sub.textContent = `Which value is in the error interval? (Remember: lower included, upper excluded.)`;
+
+    $choices.innerHTML = "";
+    const letters = ["A", "B", "C", "D"];
+
+    q.opts.forEach((val, i) => {
+      const btn = document.createElement("button");
+      btn.className = "choice";
+      btn.type = "button";
+      btn.innerHTML = `<strong>${letters[i]}.</strong> ${fmt(val)}`;
+      btn.addEventListener("click", () => choose(i));
+      $choices.appendChild(btn);
+    });
+  }
+
+  function choose(i) {
+    if (locked) return;
+    locked = true;
+
+    const q = questions[idx];
+    const correct = (i === q.correctIndex);
+
+    // mark score
+    if (correct) score += 1;
+    $score.textContent = score;
+
+    // feedback
+    const loTxt = fmt(q.lo);
+    const hiTxt = fmt(q.hi);
+    const chosenVal = q.opts[i];
+    const isIn = inInterval(chosenVal, q.lo, q.hi);
+
+    $result.style.display = "block";
+    $result.innerHTML = `
+      <div class="status ${correct ? "ok" : "no"}">${correct ? "✅ Correct" : "❌ Not quite"}</div>
+      <div style="margin-top:8px;">
+        Error interval: <span class="kbd">${loTxt} ≤ x &lt; ${hiTxt}</span>
+      </div>
+      <div style="margin-top:8px;">
+        You chose <span class="kbd">${fmt(chosenVal)}</span> — that is <strong>${isIn ? "inside" : "outside"}</strong> the interval.
+      </div>
+      <div style="margin-top:10px;">
+        Endpoint reminder:
+        <ul style="margin:6px 0 0 18px;">
+          <li><span class="kbd">${loTxt}</span> <strong>is included</strong> (it can round to ${fmt(q.rounded)}).</li>
+          <li><span class="kbd">${hiTxt}</span> <strong>is excluded</strong> (it would round to ${fmt(q.rounded + q.unit)}).</li>
+        </ul>
+      </div>
+    `;
+
+    $next.disabled = false;
+
+    // highlight buttons (optional but helpful)
+    const buttons = [...$choices.querySelectorAll("button.choice")];
+    buttons.forEach((b, j) => {
+      b.style.opacity = "0.85";
+      if (j === q.correctIndex) {
+        b.style.borderColor = "#56c271";
+        b.style.background = "#f2fff6";
+      }
+      if (j === i && j !== q.correctIndex) {
+        b.style.borderColor = "#ff7a7a";
+        b.style.background = "#fff3f3";
+      }
+      b.style.cursor = "default";
+    });
+  }
+
+  function next() {
+    if (idx < questions.length - 1) {
+      idx += 1;
+      render();
+    } else {
+      // end screen
+      const total = questions.length;
+      $choices.innerHTML = "";
+      $title.textContent = `Finished! Score: ${score}/${total}`;
+      $sub.textContent = `Click “New set” to generate another run.`;
+      $result.style.display = "block";
+      $result.innerHTML = `
+        <div class="status ${score === total ? "ok" : ""}">${score === total ? "Perfect." : "Done."}</div>
+        <div style="margin-top:8px;">
+          Key exam habit: always write <span class="kbd">lower ≤ x &lt; upper</span>.
+        </div>
+      `;
+      $next.disabled = true;
+    }
+  }
+
+  function newSet() {
+    idx = 0;
+    score = 0;
+    questions = buildSet($difficulty.value);
+    render();
+  }
+
+  $next.addEventListener("click", next);
+  $newSet.addEventListener("click", newSet);
+
+  // init
+  newSet();
+})();
+</script>
+</body>
+</html>
